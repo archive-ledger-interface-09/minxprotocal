@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HRD Secure Portal</title>
+
+<style>
+  :root{
+    --bg:#070a0e;
+    --text:#9cc4ff;
+    --muted:#7f97b2;
+    --dim:#5f7284;
+    --danger:#f8696b;
+    --ok:#22c55e;
+    --shadow:0 18px 60px rgba(0,0,0,.55);
+    --radius:12px;
+    --border:rgba(34,50,67,.75);
+    --panel:linear-gradient(180deg, rgba(13,18,25,.85) 0%, rgba(10,15,20,.85) 100%);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(100,160,255,.08), transparent 60%),
+      radial-gradient(900px 450px at 15% 0%, rgba(134,247,176,.06), transparent 55%),
+      linear-gradient(180deg, #05070a 0%, var(--bg) 45%, #05070a 100%);
+    color:var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    letter-spacing:.15px;
+  }
+
+  /* Top bar */
+  .topbar{
+    height:44px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; gap:10px;
+    border-bottom:1px solid rgba(34,50,67,.55);
+    background: linear-gradient(180deg, rgba(12,17,24,.85), rgba(8,11,15,.55));
+    backdrop-filter: blur(6px);
+    font-size:12px; color:var(--dim);
+  }
+  .dot{ width:8px;height:8px;border-radius:50%; background: rgba(156,196,255,.35); box-shadow:0 0 10px rgba(156,196,255,.18);}
+  .topLeft{ display:flex; align-items:center; gap:10px; }
+  .topRight{ display:flex; align-items:center; gap:10px; }
+  .pill{
+    font-size:11px; color: var(--dim);
+    border:1px solid rgba(34,50,67,.65);
+    padding:6px 10px; border-radius: 999px;
+    background: rgba(10,15,20,.40);
+    white-space:nowrap;
+  }
+
+  /* Frame */
+  .wrap{ height: calc(100% - 44px); display:grid; place-items:center; padding: 18px 14px 26px; overflow:auto; }
+  .card{
+    width:min(1280px, 100%);
+    height:min(820px, calc(100vh - 90px));
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow:hidden;
+    background: var(--panel);
+  }
+
+  /* Login view */
+  .login{ height:100%; display:grid; place-items:center; padding:22px; }
+  .loginBox{
+    width:min(860px, 100%);
+    border:1px solid rgba(34,50,67,.70);
+    background: linear-gradient(180deg, rgba(11,17,24,.78), rgba(8,12,16,.78));
+    border-radius: var(--radius);
+    padding: 28px 28px 26px;
+    position:relative;
+  }
+  .brandRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .brand{
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .loginTitle{ margin:0; font-size: 14px; letter-spacing: 2.4px; font-weight: 800; }
+  .subBrand{ font-size:11px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; }
+  .seal{
+    border:1px solid rgba(34,50,67,.75);
+    color: rgba(156,196,255,.55);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size:11px;
+    background: rgba(10,15,20,.40);
+    white-space:nowrap;
+  }
+  .loginSub{ margin:14px 0 20px; color:var(--dim); font-size:11px; line-height:1.55; }
+  .field{
+    width:100%; padding:10px 12px; margin: 8px 0;
+    background: rgba(10,15,20,.65);
+    border:1px solid rgba(34,50,67,.75);
+    border-radius: 12px;
+    color: var(--text);
+    outline:none;
+    font-size:12px;
+  }
+  .field:focus{
+    border-color: rgba(156,196,255,.70);
+    box-shadow: 0 0 0 3px rgba(156,196,255,.10);
+  }
+  .btnRow{ display:flex; gap:10px; align-items:center; margin-top:10px; }
+  .btn{
+    padding:10px 14px;
+    background: rgba(20,30,42,.65);
+    border:1px solid rgba(34,50,67,.85);
+    color: var(--text);
+    border-radius: 12px;
+    cursor:pointer;
+    font-size:12px;
+  }
+  .btn:hover{ background: rgba(24,36,50,.78); }
+  .error{ margin-top:12px; color:var(--danger); font-size:12px; display:none; }
+  .hint{
+    margin-top:14px;
+    color: rgba(156,196,255,.35);
+    font-size: 10px;
+    letter-spacing: .9px;
+    text-transform: uppercase;
+  }
+
+  /* Auth loading bar (always ends in FAIL) */
+  .authLoad {
+    margin-top: 12px;
+    height: 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(34,50,67,.75);
+    background: rgba(10,15,20,.55);
+    overflow: hidden;
+    display: none;
+  }
+  .authLoadBar {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: var(--ok);
+    box-shadow: 0 0 14px rgba(34,197,94,.25);
+    animation: authProgress 520ms ease-out forwards;
+  }
+  @keyframes authProgress {
+    0%   { width: 0%; }
+    65%  { width: 82%; }
+    100% { width: 100%; }
+  }
+  .authLoad.fail .authLoadBar{
+    background: var(--danger);
+    box-shadow: 0 0 14px rgba(248,105,107,.20);
+  }
+
+  /* Archive view */
+  .archive{ height:100%; display:none; }
+  .grid{ height:100%; display:grid; grid-template-columns: 300px 440px 1fr; }
+
+  /* Left */
+  .left{
+    border-right:1px solid rgba(34,50,67,.60);
+    background: rgba(10,15,20,.35);
+    padding: 12px;
+    display:flex; flex-direction:column; gap:12px;
+    min-width:0;
+  }
+  .identity{
+    border:1px solid rgba(34,50,67,.65);
+    border-radius: 14px;
+    background: rgba(10,15,20,.45);
+    padding: 10px;
+  }
+  .idTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .user{ font-size:12px; font-weight:800; letter-spacing:1px; text-transform: uppercase; }
+  .role{ font-size:11px; color: var(--dim); margin-top:6px; line-height:1.35; }
+  .miniBtn{
+    padding: 8px 10px;
+    font-size:12px;
+    border-radius:12px;
+    border:1px solid rgba(34,50,67,.85);
+    background: rgba(20,30,42,.55);
+    color: var(--text);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .miniBtn:hover{ background: rgba(24,36,50,.72); }
+  .sectionLabel{
+    font-size:11px; color: var(--dim);
+    letter-spacing:1.2px; text-transform: uppercase;
+    margin: 2px 2px 0;
+  }
+  .nav{ display:flex; flex-direction:column; gap:8px; padding-right:4px; min-width:0; }
+  .navItem{
+    padding: 10px 10px;
+    border-radius: 14px;
+    border:1px solid rgba(34,50,67,.55);
+    background: rgba(10,15,20,.35);
+    cursor:pointer;
+    color: var(--muted);
+    font-size:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .navItem:hover{ background: rgba(16,23,32,.55); color: var(--text); }
+  .navItem.active{
+    background: rgba(20,30,42,.60);
+    border-color: rgba(156,196,255,.40);
+    box-shadow: 0 0 0 3px rgba(156,196,255,.07);
+    color: var(--text);
+  }
+  .badge{
+    font-size:11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border:1px solid rgba(34,50,67,.65);
+    color: var(--dim);
+    background: rgba(10,15,20,.35);
+    white-space:nowrap;
+  }
+
+  /* Middle */
+  .mid{
+    border-right:1px solid rgba(34,50,67,.60);
+    background: rgba(8,12,16,.35);
+    display:flex;
+    flex-direction:column;
+    min-width: 0;
+  }
+  .listHeader{
+    padding: 12px;
+    border-bottom:1px solid rgba(34,50,67,.55);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .listTitle{ font-size:12px; letter-spacing: 1.4px; font-weight:800; }
+  .search{
+    width: 230px;
+    padding: 8px 10px;
+    font-size:12px;
+    border-radius: 14px;
+    border:1px solid rgba(34,50,67,.70);
+    background: rgba(10,15,20,.55);
+    color: var(--text);
+    outline:none;
+  }
+  .search:focus{
+    border-color: rgba(156,196,255,.65);
+    box-shadow: 0 0 0 3px rgba(156,196,255,.09);
+  }
+  .list{ padding: 8px; min-width: 0; }
+  .item{
+    border:1px solid rgba(34,50,67,.50);
+    background: rgba(10,15,20,.35);
+    border-radius: 16px;
+    padding: 12px;
+    margin: 10px 6px;
+    cursor:pointer;
+  }
+  .item:hover{ background: rgba(16,23,32,.55); border-color: rgba(34,50,67,.75); }
+  .item.active{
+    background: rgba(20,30,42,.60);
+    border-color: rgba(156,196,255,.40);
+    box-shadow: 0 0 0 3px rgba(156,196,255,.07);
+  }
+  .itemTop{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .fname{ font-size:12px; font-weight:800; color: var(--text); }
+  .metaSmall{ font-size:11px; color: var(--dim); }
+  .desc{ margin-top:8px; font-size:11px; color: var(--muted); line-height:1.35; white-space:pre-wrap; }
+
+  /* Right */
+  .right{
+    background: rgba(10,15,20,.25);
+    display:flex;
+    flex-direction:column;
+    min-width: 0;
+  }
+  .viewHeader{
+    padding: 14px 16px;
+    border-bottom:1px solid rgba(34,50,67,.55);
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .viewTitle{ font-size:13px; font-weight:800; letter-spacing: .8px; }
+  .viewMeta{
+    margin-top:8px;
+    display:grid;
+    gap:4px;
+    font-size:11px;
+    color: var(--dim);
+    line-height:1.35;
+  }
+  .viewBody{
+    padding: 14px 16px 18px;
+    white-space: pre-wrap;
+    font-size:12px;
+    line-height:1.7;
+    color: var(--muted);
+  }
+  .empty{ padding: 18px 16px; color: var(--dim); font-size:12px; }
+
+  /* Scroll forcing */
+  .card { height: min(820px, calc(100vh - 90px)); }
+  .archive, .grid { height: 100%; }
+  .left, .mid, .right { height: 100%; }
+  .left { overflow: hidden; }
+  #nav { overflow-y: auto; overflow-x:hidden; height: calc(100% - 250px); }
+  .mid { overflow: hidden; }
+  #list { overflow-y: auto; overflow-x:hidden; height: calc(100% - 56px); }
+  .right { overflow: hidden; }
+  #viewBody { overflow-y: auto; overflow-x:hidden; height: calc(100% - 86px); }
+
+  /* Scrollbar */
+  * { scrollbar-width: thin; scrollbar-color: rgba(156,196,255,.25) rgba(10,15,20,.35); }
+  *::-webkit-scrollbar{ width:10px; height:10px; }
+  *::-webkit-scrollbar-track{ background: rgba(10,15,20,.35); }
+  *::-webkit-scrollbar-thumb{
+    background: rgba(156,196,255,.20);
+    border: 1px solid rgba(34,50,67,.75);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover{ background: rgba(156,196,255,.28); }
+
+  /* Toast */
+  .toast{
+    position:fixed;
+    right:18px;
+    bottom:18px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(34,50,67,.85);
+    background: rgba(11,17,24,.92);
+    color: var(--text);
+    font-size:12px;
+    box-shadow: var(--shadow);
+    z-index:9999;
+    opacity:0;
+    transform: translateY(10px);
+    transition: opacity .18s ease, transform .18s ease;
+    pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform: translateY(0); }
+
+  /* Reveal overlay */
+  #revealOverlay{
+    position:fixed; inset:0;
+    background: radial-gradient(900px 420px at 50% 30%, rgba(156,196,255,.10), rgba(0,0,0,.92) 60%);
+    display:none;
+    z-index: 99999;
+    align-items:center;
+    justify-content:center;
+    padding: 20px;
+  }
+  #revealOverlay.show{ display:flex; }
+  .revealBox{
+    width:min(980px, 96vw);
+    border:1px solid rgba(34,50,67,.85);
+    border-radius: 16px;
+    background: rgba(10,15,20,.75);
+    box-shadow: var(--shadow);
+    padding: 18px 18px 16px;
+  }
+  .revealTitle{
+    font-size: 12px;
+    letter-spacing: 2px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .revealText{
+    color: rgba(156,196,255,.70);
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .revealHint{
+    margin-top: 12px;
+    font-size: 11px;
+    color: rgba(156,196,255,.45);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+</style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="topLeft">
+      <span class="dot"></span>
+      <span>secure.hrd-labs.com / sso / portal</span>
+    </div>
+    <div class="topRight">
+      <span class="pill" id="nodePill">Node: EDGE</span>
+      <span class="pill">Status: ACTIVE</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+
+      <!-- LOGIN -->
+      <div class="login" id="loginView">
+        <div class="loginBox">
+          <div class="brandRow">
+            <div class="brand">
+              <h1 class="loginTitle">HELIX RESEARCH DIRECTORATE</h1>
+              <div class="subBrand">SECURE ACCESS PORTAL</div>
+            </div>
+            <div class="seal">HRD • INTERNAL</div>
+          </div>
+
+          <div class="loginSub">
+            Authorized personnel only.<br>
+            This system records attempted access and lockout events.
+          </div>
+
+          <input class="field" id="u" placeholder="Corporate ID" autocomplete="username" />
+          <input class="field" id="p" type="password" placeholder="Password" autocomplete="current-password" />
+          <div class="btnRow">
+            <button class="btn" id="loginBtn">Authenticate</button>
+            <button class="btn" id="resetBtn" type="button">Reset</button>
+          </div>
+
+          <div class="authLoad" id="authLoad">
+            <div class="authLoadBar" id="authLoadBar"></div>
+          </div>
+
+          <div class="error" id="err">AUTHENTICATION FAILED — Invalid credentials.</div>
+
+          <div class="hint">
+            Compliance Notice: Unauthorized access attempts may be reported.
+          </div>
+        </div>
+      </div>
+
+      <!-- ARCHIVE (unlocked by code word only) -->
+      <div class="archive" id="archiveView">
+        <div class="grid">
+
+          <!-- LEFT -->
+          <aside class="left">
+            <div class="identity">
+              <div class="idTop">
+                <div>
+                  <div class="user" id="who">AUTHORIZED SESSION</div>
+                  <div class="role" id="role">ARCHIVE NODE: BLACKBOX / READ-ONLY</div>
+                </div>
+                <button class="miniBtn" id="lockBtn">Re-lock</button>
+              </div>
+              <div class="role" style="margin-top:10px;">
+                Session Tag: <span id="sess">HRD-██-██</span><br>
+                Access Trace: <span id="trace">UNSEALED</span>
+              </div>
+            </div>
+
+            <div class="sectionLabel">Directories</div>
+            <div class="nav" id="nav"></div>
+
+            <div class="sectionLabel">Controls</div>
+            <button class="miniBtn" id="clearSelectionBtn">Clear Viewer</button>
+            <button class="miniBtn" id="copyBtn">Copy File</button>
+          </aside>
+
+          <!-- MID -->
+          <section class="mid">
+            <div class="listHeader">
+              <div class="listTitle" id="listTitle">—</div>
+              <input class="search" id="search" placeholder="Search archive" />
+            </div>
+            <div class="list" id="list"></div>
+          </section>
+
+          <!-- RIGHT -->
+          <section class="right">
+            <div class="viewHeader">
+              <div>
+                <div class="viewTitle" id="viewTitle">No file selected</div>
+                <div class="viewMeta" id="viewMeta" style="display:none;"></div>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="miniBtn" id="redactBtn">Toggle Redaction Overlay</button>
+              </div>
+            </div>
+
+            <div class="viewBody" id="viewBody">
+              <div class="empty">Select a directory, then select a file.</div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div id="revealOverlay" aria-hidden="true">
+    <div class="revealBox">
+      <div class="revealTitle">ACCESS VECTOR ACCEPTED — ARCHIVE NODE UNSEALED</div>
+      <div class="revealText" id="revealText"></div>
+      <div class="revealHint">Press ESC to return</div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+CONFIG
+========================= */
+
+/* Change this to whatever phrase you want */
+const CODE_WORD = "blackmink"; // <- the only way in
+
+/* Optional extra “decoy” phrases (still open the same archive) */
+const ALT_CODES = ["subjectjones", "helixunseal", "minkprotocol"];
+
+/* =========================
+STATE
+========================= */
+let unlocked = false;
+let currentCategory = null;
+let activeFileId = null;
+let redactOverlay = false;
+let keyBuffer = "";
+
+/* =========================
+DIRECTORIES
+========================= */
+const DIRECTORIES = [
+  { id:"index", label:"Index & Registers" },
+  { id:"subject", label:"Subject Files" },
+  { id:"lab", label:"Laboratory Reports" },
+  { id:"neuro", label:"Cognitive / Neuro Logs" },
+  { id:"field", label:"Field Monitoring" },
+  { id:"policy", label:"Internal Policy & Memos" },
+  { id:"legal", label:"Legal / Compliance" },
+  { id:"attachments", label:"Attachments & Artifacts" },
+  { id:"fragments", label:"Recovered Fragments" }
+];
+
+/* =========================
+FILES
+(tons, so scrolling feels real)
+========================= */
+const FILES = [
+  /* INDEX */
+  {
+    id:"IDX-0001 — ARCHIVE REGISTER",
+    category:"index",
+    tags:["index","register","archive"],
+    short:"Directory overview and audit notice",
+    content:
+`HELIX RESEARCH DIRECTORATE (HRD)
+ARCHIVE REGISTER — BLACKBOX NODE
+File: IDX-0001
+
+Directories present:
+- Subject Files
+- Laboratory Reports
+- Cognitive / Neuro Logs
+- Field Monitoring
+- Internal Policy & Memos
+- Legal / Compliance
+- Attachments & Artifacts
+- Recovered Fragments
+
+Notice:
+This node is not part of standard HRD SSO.
+If you can read this, you are not where you were supposed to be.`
+  },
+  {
+    id:"IDX-0003 — SUBJECT CROSS-REFERENCE",
+    category:"index",
+    tags:["subject","xref","index"],
+    short:"Cross-reference list (partial)",
+    content:
+`IDX-0003 — SUBJECT CROSS-REFERENCE (PARTIAL)
+
+SUBJECT-0471 — ASHLYNN JONES — ACTIVE
+SUBJECT-0520 — [REDACTED] — ARCHIVED
+SUBJECT-0557 — [REDACTED] — ACTIVE (NO AUDIT)
+SUBJECT-0612 — [REDACTED] — TERMINATED
+
+Note:
+Several IDs exist without payload. Empty does not mean absent.`
+  },
+
+  /* SUBJECT */
+  {
+    id:"SUBJECT-0471 — IDENTITY SHEET",
+    category:"subject",
+    tags:["subject","identity","profile"],
+    short:"Basic identity sheet / surname exposure",
+    content:
+`SUBJECT-0471 — IDENTITY SHEET
+
+First Name: Ashlynn
+Surname: Jones
+Alias/Callsign: Mink
+DOB: 09/18/████ (withheld)
+Origin: BC, Canada → Colorado
+
+Visibility Risk:
+Elevated — political association present.
+
+Directive:
+Do not attach surname to field documentation unless required.`
+  },
+  {
+    id:"SUBJECT-0471 — FAMILY EXPOSURE RISK (SUMMARY)",
+    category:"subject",
+    tags:["family","political","risk","summary"],
+    short:"Political-family connection and exposure risk",
+    content:
+`SUBJECT-0471 — FAMILY EXPOSURE RISK (SUMMARY)
+
+The subject has a direct familial relationship to a high-visibility public official.
+Rank: senior political figure (exact office withheld in this node).
+
+Risk:
+Public linkage increases scrutiny. Scrutiny increases leak probability.
+Leak probability increases operational collapse.
+
+Directive:
+Maintain identity separation across systems.
+Do not discuss rationale in briefings.`
+  },
+  {
+    id:"SUBJECT-0471 — BACKGROUND NARRATIVE (CONTROLLED)",
+    category:"subject",
+    tags:["narrative","cover","control"],
+    short:"A controlled public-facing explanation (redacted)",
+    content:
+`SUBJECT-0471 — BACKGROUND NARRATIVE (CONTROLLED)
+
+This document defines approved language for public-facing records.
+
+Approved public narrative:
+- Voluntary relocation in adolescence
+- Documented instability period (non-specific)
+- Recruitment framed as rehabilitation + service program
+
+Internal note:
+Narrative consistency is a security feature. Not a biography.
+
+Sections withheld: ███████████████████████████`
+  },
+  {
+    id:"SUBJECT-0471 — WATCHLIST MARKER (NO RATIONALE)",
+    category:"subject",
+    tags:["watchlist","marker","status"],
+    short:"Marker only / rationale removed",
+    content:
+`SUBJECT-0471 — WATCHLIST MARKER
+
+Status: PROTECTED + MONITORED
+Category: Passive Observation
+Trigger Criteria: ███████████████
+
+Rationale:
+Not stored on this node.`
+  },
+
+  /* LAB */
+  {
+    id:"LAB-0471-01 — SYSTEMS INTRUSION APTITUDE TRIAL",
+    category:"lab",
+    tags:["lab","systems","aptitude"],
+    short:"Skill evaluation under controlled constraints",
+    content:
+`LAB-0471-01
+
+Objective:
+Measure intrusion aptitude under time pressure and noise injection.
+
+Result:
+Subject demonstrates high resilience to deceptive feedback.
+Error correction latency: low.
+Persistence behavior: high.
+
+Recommendation:
+Do not attempt to “slow” subject via standard cognitive load tactics.
+Subject adapts.
+
+Note:
+Subject repeatedly requests confirmation from a singular authority figure (pattern observed in later field logs).`
+  },
+  {
+    id:"LAB-0471-02 — STRESS RESPONSE (POST-EVENT WINDOW)",
+    category:"lab",
+    tags:["lab","stress","window","post-event"],
+    short:"Delayed stress indicators after acute events",
+    content:
+`LAB-0471-02
+
+Observation:
+Stress indicators increase 2–6 hours after threat exposure rather than during.
+
+Indicators:
+- shallow breathing
+- reduced speech output
+- repetitive procedural actions
+- fixation on mission “correctness”
+
+Directive:
+Schedule debriefs accordingly.
+Immediate debrief may appear “fine” while later collapse occurs.`
+  },
+  {
+    id:"LAB-0471-03 — MEMORY CONSISTENCY CHECK (NON-DIAGNOSTIC)",
+    category:"lab",
+    tags:["lab","memory","consistency"],
+    short:"Not a diagnosis; notes inconsistencies",
+    content:
+`LAB-0471-03 — MEMORY CONSISTENCY CHECK (NON-DIAGNOSTIC)
+
+Summary:
+Subject narrative shows discontinuities around early adolescence.
+When challenged, subject substitutes unrelated autobiographical detail.
+
+Interpretation:
+Inconsistency may be trauma-adjacent, environmental, or administrative.
+Causation not asserted in this report.
+
+Directive:
+Do not press subject for detail in operational settings.`
+  },
+
+  /* NEURO */
+  {
+    id:"NEURO-0471-A — SLEEP ARCHITECTURE LOG (30 DAYS)",
+    category:"neuro",
+    tags:["neuro","sleep","log"],
+    short:"Sleep patterning and interruption markers",
+    content:
+`NEURO-0471-A — SLEEP ARCHITECTURE LOG
+
+Findings:
+- high fragmentation during elevated mission tempo
+- recurring dream interruption markers (unknown content)
+- improved continuity when paired with stable command structure
+
+Note:
+Stability correlates with presence of trusted supervisory figure.`
+  },
+  {
+    id:"NEURO-0471-B — REACTION TO IDENTITY PROMPTS",
+    category:"neuro",
+    tags:["identity","prompt","reaction"],
+    short:"Surname prompts increase physiological load",
+    content:
+`NEURO-0471-B
+
+When exposed to surname prompt "Jones":
+- heart rate increase (moderate)
+- pupil response (notable)
+- speech reduction
+- short “reset” behavior (counting / repeating a phrase under breath)
+
+Interpretation:
+Identity cue is loaded. Not necessarily incriminating.`
+  },
+  {
+    id:"NEURO-0471-C — COMPLIANCE VS. AGENCY (MEASURED)",
+    category:"neuro",
+    tags:["compliance","agency","measured"],
+    short:"Compliance profile under hierarchy",
+    content:
+`NEURO-0471-C
+
+Subject demonstrates high tolerance for structured hierarchy.
+Verbal responses measured.
+Emotional signaling delayed under pressure.
+
+Risk:
+Internalization tendency under prolonged stress.
+
+Recommendation:
+Maintain clear tasking and avoid ambiguous authority conflicts.`
+  },
+
+  /* FIELD */
+  {
+    id:"FIELD-LOG-0731 — ‘COLD GLASS’ OBSERVATION NOTE",
+    category:"field",
+    tags:["field","0731","cold glass","observation"],
+    short:"Field monitoring note; injuries referenced",
+    content:
+`FIELD-LOG-0731
+
+Event:
+High-casualty facility breach (approx. 20 fatalities recorded).
+
+Notes:
+- Command element sustained injuries (blunt strike; lower-back puncture).
+- Subject (Mink) maintained task focus during breach.
+- After-action: subject showed delayed tremor and repeated “inventory” behavior.
+
+Recommendation:
+Monitor post-event window rather than immediate.`
+  },
+  {
+    id:"FIELD-LOG-0744 — NODE SWEEP (LOW CONTACT)",
+    category:"field",
+    tags:["field","0744","sweep"],
+    short:"No engagement; odd container noted",
+    content:
+`FIELD-LOG-0744
+
+Sweep concluded without contact.
+One container logged “EMPTY” despite measurable mass.
+
+Note:
+Subject stared at container for 17 seconds longer than necessary before proceeding.
+No comment offered.`
+  },
+  {
+    id:"FIELD-LOG-0781 — TELEMETRY GAP (4m 13s)",
+    category:"field",
+    tags:["field","telemetry","gap","0781"],
+    short:"Telemetry discontinuity note",
+    content:
+`FIELD-LOG-0781
+
+Comms blackout recorded: 4m 13s.
+No device failures found post-event.
+
+Directive:
+Do not attempt independent reconstruction.
+Escalate to forensic oversight only.`
+  },
+
+  /* POLICY */
+  {
+    id:"POLICY-CT-01 — CONTROLLED TRANSPARENCY RULES",
+    category:"policy",
+    tags:["policy","controlled transparency","rules"],
+    short:"Internal rules for what gets said out loud",
+    content:
+`POLICY-CT-01
+
+Operational transparency does not equate to operational vulnerability.
+
+- Tactical plans are not for public release.
+- Identities may be partitioned across systems.
+- Rationale for monitoring/protection may be compartmentalized.
+- If a document is blank, assume it is stored elsewhere.`
+  },
+  {
+    id:"MEMO-0471 — ‘DO NOT SPECULATE’ REMINDER",
+    category:"policy",
+    tags:["memo","speculation","reminder"],
+    short:"A memo written like someone was angry",
+    content:
+`MEMO-0471
+
+Stop writing motives into the margins.
+
+If you do not have a documented cause, do not invent one.
+If you do not have a signed directive, do not infer one.
+If you see an empty field, do not fill it with your imagination.
+
+This node contains markers. Not explanations.`
+  },
+  {
+    id:"MEMO-OVR — POLITICAL EXPOSURE MANAGEMENT",
+    category:"policy",
+    tags:["memo","political","exposure"],
+    short:"How HRD contains public blowback",
+    content:
+`MEMO-OVR
+
+Public officials generate gravity.
+Gravity generates attention.
+Attention generates leaks.
+
+Directive:
+Keep Subject-0471 surname isolated.
+Audit reports may acknowledge “protected + monitored” status without rationale.
+
+Do not use family identifiers in operational comms.`
+  },
+
+  /* LEGAL */
+  {
+    id:"LEGAL-NDA — CONFIDENTIALITY AGREEMENT (HRD)",
+    category:"legal",
+    tags:["legal","nda","confidentiality"],
+    short:"HRD confidentiality summary (not a signature copy)",
+    content:
+`LEGAL-NDA (SUMMARY)
+
+You agree not to disclose:
+- system architecture
+- research protocols
+- protected subject identifiers
+- compartment markers
+- rationale for monitoring
+
+Violation may result in termination, referral, or prosecution
+under relevant statutes.
+
+This copy is not a signature artifact.`
+  },
+
+  /* ATTACHMENTS */
+  {
+    id:"ATTACH-0471 — BIOMETRIC SUMMARY (REDACTED)",
+    category:"attachments",
+    tags:["attach","biometric","redacted"],
+    short:"Biometric summary with heavy redactions",
+    content:
+`ATTACH-0471 — BIOMETRIC SUMMARY
+
+Blood Type: ███
+Immunology: Selective IgA Deficiency (flagged)
+Markers: ███████████████
+
+Note:
+Biometric identifiers removed to prevent misuse.`
+  },
+  {
+    id:"ATTACH-0471 — ANOMALY HANDLING PRIMER (LEVEL II)",
+    category:"attachments",
+    tags:["anomaly","primer","level ii"],
+    short:"Primer for lab-facing staff",
+    content:
+`ANOMALY HANDLING PRIMER (LEVEL II)
+
+- Do not touch exposed materials without verification.
+- Do not remain alone in distortion zones.
+- If you hear rhythmic sound that does not have a source, leave.
+- If you feel “watched” by a system with no sensors, log and exit.`
+  },
+
+  /* FRAGMENTS (extra vibe) */
+  {
+    id:"FRAGMENT — SSO FAILURE PATTERN (UNEXPLAINED)",
+    category:"fragments",
+    tags:["fragment","sso","failure"],
+    short:"A fragment describing the ‘impossible login’ behavior",
+    content:
+`FRAGMENT
+
+Every login fails because the portal is not meant to be used.
+It is meant to be seen.
+
+A clean front door.
+A locked house.
+A second entrance that only opens when you stop knocking.`
+  },
+  {
+    id:"FRAGMENT — ‘JONES’ STRING TRACE",
+    category:"fragments",
+    tags:["fragment","jones","trace"],
+    short:"Trace that repeats a name like a checksum",
+    content:
+`FRAGMENT
+
+JONES
+JONES
+JONES
+
+(Repeated 41 times)
+
+Comment:
+“Stop saying it out loud.”`
+  }
+];
+
+/* =========================
+UTILS
+========================= */
+function escapeHtml(str){
+  return String(str)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=> t.classList.remove("show"), 2400);
+}
+function nowStamp(){
+  const d = new Date();
+  const pad = (n)=> String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/* =========================
+UI HOOKS
+========================= */
+const loginView = document.getElementById("loginView");
+const archiveView = document.getElementById("archiveView");
+
+const loginBtn = document.getElementById("loginBtn");
+const resetBtn = document.getElementById("resetBtn");
+const err = document.getElementById("err");
+const authLoad = document.getElementById("authLoad");
+const authLoadBar = document.getElementById("authLoadBar");
+
+const nav = document.getElementById("nav");
+const list = document.getElementById("list");
+const listTitle = document.getElementById("listTitle");
+const search = document.getElementById("search");
+
+const viewTitle = document.getElementById("viewTitle");
+const viewMeta = document.getElementById("viewMeta");
+const viewBody = document.getElementById("viewBody");
+
+const clearSelectionBtn = document.getElementById("clearSelectionBtn");
+const copyBtn = document.getElementById("copyBtn");
+const redactBtn = document.getElementById("redactBtn");
+const lockBtn = document.getElementById("lockBtn");
+
+const revealOverlay = document.getElementById("revealOverlay");
+const revealText = document.getElementById("revealText");
+
+/* =========================
+LOGIN (always fails)
+========================= */
+function runFakeAuth(){
+  err.style.display = "none";
+  authLoad.classList.remove("fail");
+  authLoad.style.display = "block";
+
+  authLoadBar.style.animation = "none";
+  void authLoadBar.offsetWidth;
+  authLoadBar.style.animation = "authProgress 520ms ease-out forwards";
+
+  loginBtn.disabled = true;
+  loginBtn.style.opacity = "0.75";
+  loginBtn.style.cursor = "not-allowed";
+
+  setTimeout(() => {
+    authLoad.classList.add("fail");
+    err.style.display = "block";
+    authLoad.style.display = "none";
+    loginBtn.disabled = false;
+    loginBtn.style.opacity = "1";
+    loginBtn.style.cursor = "pointer";
+    toast("AUTH FAIL (RECORDED)");
+  }, 560);
+}
+
+function resetFields(){
+  document.getElementById("u").value = "";
+  document.getElementById("p").value = "";
+  err.style.display = "none";
+  toast("RESET");
+}
+
+loginBtn.addEventListener("click", runFakeAuth);
+document.getElementById("p").addEventListener("keydown", (e)=>{ if(e.key === "Enter") runFakeAuth(); });
+resetBtn.addEventListener("click", resetFields);
+
+/* =========================
+ARCHIVE RENDER
+========================= */
+function renderNav(){
+  nav.innerHTML = "";
+  DIRECTORIES.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "navItem" + (currentCategory === d.id ? " active" : "");
+    el.innerHTML = `<span>${d.label}</span><span class="badge">${d.id.toUpperCase()}</span>`;
+    el.addEventListener("click", () => loadCategory(d.id));
+    nav.appendChild(el);
+  });
+}
+
+function renderList(){
+  const q = search.value.trim().toLowerCase();
+  const files = FILES
+    .filter(f => f.category === currentCategory)
+    .filter(f => {
+      if(!q) return true;
+      const blob = `${f.id} ${f.short||""} ${(f.tags||[]).join(" ")} ${f.content||""}`.toLowerCase();
+      return blob.includes(q);
+    });
+
+  list.innerHTML = "";
+  if(files.length === 0){
+    list.innerHTML = `<div class="empty">No files found in this directory.</div>`;
+    return;
+  }
+
+  files.forEach(f => {
+    const el = document.createElement("div");
+    el.className = "item" + (activeFileId === f.id ? " active" : "");
+    el.innerHTML = `
+      <div class="itemTop">
+        <div class="fname">${escapeHtml(f.id)}</div>
+        <div class="metaSmall">${escapeHtml(nowStamp().slice(0,10))}</div>
+      </div>
+      <div class="desc">${f.short ? "Summary: " + escapeHtml(f.short) : ""}</div>
+    `;
+    el.addEventListener("click", () => openFile(f));
+    list.appendChild(el);
+  });
+}
+
+function openFile(f){
+  activeFileId = f.id;
+
+  viewTitle.textContent = f.id;
+  viewMeta.style.display = "grid";
+  viewMeta.innerHTML = `
+    <div>Directory: ${escapeHtml(currentCategory)}</div>
+    <div>Timestamp: ${escapeHtml(nowStamp())}</div>
+    <div>Node: BLACKBOX / READ-ONLY</div>
+  `;
+
+  let body = escapeHtml(f.content || "");
+  if(redactOverlay){
+    body = body.replace(/█{3,}/g, "████████");
+  }
+  viewBody.innerHTML = body.replace(/\n/g, "<br>");
+  renderList();
+  viewBody.scrollTop = 0;
+}
+
+function clearViewer(){
+  activeFileId = null;
+  viewTitle.textContent = "No file selected";
+  viewMeta.style.display = "none";
+  viewMeta.innerHTML = "";
+  viewBody.innerHTML = `<div class="empty">Select a directory, then select a file.</div>`;
+  renderList();
+}
+
+function loadCategory(cat){
+  currentCategory = cat;
+  activeFileId = null;
+  listTitle.textContent = DIRECTORIES.find(d=>d.id===cat)?.label || cat;
+  search.value = "";
+  renderNav();
+  renderList();
+  clearViewer();
+}
+
+/* Controls */
+clearSelectionBtn.addEventListener("click", clearViewer);
+
+copyBtn.addEventListener("click", async () => {
+  const txt = viewBody.innerText || "";
+  try{
+    await navigator.clipboard.writeText(txt);
+    toast("COPIED");
+  }catch{
+    toast("COPY FAILED");
+  }
+});
+
+redactBtn.addEventListener("click", () => {
+  redactOverlay = !redactOverlay;
+  toast(redactOverlay ? "REDACTION OVERLAY: ON" : "REDACTION OVERLAY: OFF");
+  if(activeFileId){
+    const f = FILES.find(x => x.id === activeFileId);
+    if(f) openFile(f);
+  }
+});
+
+lockBtn.addEventListener("click", () => {
+  // relock back to fake login
+  unlocked = false;
+  archiveView.style.display = "none";
+  loginView.style.display = "grid";
+  document.getElementById("nodePill").textContent = "Node: EDGE";
+  toast("NODE RE-LOCKED");
+});
+
+/* =========================
+UNLOCK MECHANIC (code word typed anywhere)
+========================= */
+function showReveal(){
+  revealText.textContent =
+`Vector accepted.
+SSO surface remains closed by design.
+Blackbox node unsealed.
+
+This archive contains research artifacts associated with:
+SUBJECT-0471 — ASHLYNN JONES (alias: "Mink")
+
+Proceed carefully.
+Some files are written like they expect you to doubt your own reading.`;
+
+  revealOverlay.classList.add("show");
+}
+function hideReveal(){
+  revealOverlay.classList.remove("show");
+}
+function unlockArchive(){
+  if(unlocked) return;
+  unlocked = true;
+
+  // transition
+  showReveal();
+  setTimeout(() => {
+    hideReveal();
+    loginView.style.display = "none";
+    archiveView.style.display = "block";
+    document.getElementById("nodePill").textContent = "Node: BLACKBOX";
+    toast("ARCHIVE UNSEALED");
+
+    renderNav();
+    loadCategory("index");
+  }, 950);
+}
+
+/* Key buffer listener */
+document.addEventListener("keydown", (e) => {
+  // allow ESC to close overlay
+  if(e.key === "Escape"){
+    hideReveal();
+    return;
+  }
+
+  const k = e.key.toLowerCase();
+  if(k.length !== 1) return;
+
+  keyBuffer = (keyBuffer + k).slice(-40);
+
+  const hitPrimary = keyBuffer.includes(CODE_WORD.toLowerCase());
+  const hitAlt = ALT_CODES.some(c => keyBuffer.includes(String(c).toLowerCase()));
+  if(hitPrimary || hitAlt){
+    unlockArchive();
+  }
+});
+</script>
+</body>
+</html>
